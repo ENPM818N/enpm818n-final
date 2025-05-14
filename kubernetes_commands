@@ -1,0 +1,2 @@
+eksctl create cluster -f enpm818n-final/cluster.yaml
+kubectl apply -f enpm818n-final/opentelemetry-demo.yaml
