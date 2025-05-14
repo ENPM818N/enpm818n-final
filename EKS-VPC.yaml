@@ -42,7 +42,7 @@ Resources:
        - IpProtocol: tcp
          FromPort: 22
          ToPort: 22
-         CidrIp: 96.244.233.33/32
+         CidrIp: 0.0.0.0/0
 
  InternetGateway:
    Type: AWS::EC2::InternetGateway
@@ -98,7 +98,7 @@ Resources:
      UserData:
        !Base64 |
          #!/bin/bash
-         git clone https://github.com/ozan-aktay/enpm818n-final.git
+         git clone https://github.com/ENPM818N/enpm818n-final.git
          sudo mv enpm818n-final /home/ubuntu
          sudo chmod 777 /home/ubuntu/enpm818n-final/ec2_userdata_sudo
          ./home/ubuntu/enpm818n-final/ec2_userdata_sudo
