@@ -1,0 +1,46 @@
+name: CI/CD for OpenTelemetry App (EKS)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy OpenTelemetry to EKS
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Install eksctl
+      uses: jaxxstorm/action-install-eksctl@v1
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Update kubeconfig
+      run: eksctl utils write-kubeconfig --cluster eks-cluster --region us-east-1
+
+    - name: Deploy OpenTelemetry YAML
+      run: |
+        kubectl apply -f opentelemetry-demo.yaml
+
+    - name: Verify Deployment Success
+      run: |
+        kubectl rollout status deployment frontend -n otel-demo || exit 1
+
+    - name: Rollback on Failure
+      if: failure()
+      run: |
+        echo "Deployment failed, rolling back..."
+        kubectl rollout undo deployment frontend -n otel-demo
