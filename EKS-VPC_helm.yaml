@@ -1,0 +1,130 @@
+Resources:
+ VPC:
+   Type: AWS::EC2::VPC
+   Properties:
+     CidrBlock: 10.0.0.0/16
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+       - Key: Name
+         Value: EKS-VPC
+
+ PublicSubnet1:
+   Type: AWS::EC2::Subnet
+   Properties:
+     VpcId: !Ref VPC
+     CidrBlock: 10.0.1.0/24
+     AvailabilityZone: !Select [0, !GetAZs '']
+     Tags:
+       - Key: Name
+         Value: PublicSubnet1
+
+ PublicSubnet2:
+   Type: AWS::EC2::Subnet
+   Properties:
+     VpcId: !Ref VPC
+     CidrBlock: 10.0.2.0/24
+     AvailabilityZone: !Select [1, !GetAZs '']
+     Tags:
+       - Key: Name
+         Value: PublicSubnet2
+
+ EC2SecurityGroup:
+   Type: AWS::EC2::SecurityGroup
+   Properties:
+     VpcId: !Ref VPC
+     GroupDescription: Allow SSH access
+     GroupName: SG-EKSProject
+     SecurityGroupEgress: 
+       - IpProtocol: -1
+         CidrIp: 0.0.0.0/0
+     SecurityGroupIngress:
+       - IpProtocol: tcp
+         FromPort: 22
+         ToPort: 22
+         CidrIp: 0.0.0.0/0
+
+ InternetGateway:
+   Type: AWS::EC2::InternetGateway
+
+ VPCInternetGateway:
+   Type: AWS::EC2::VPCGatewayAttachment
+   Properties:
+     InternetGatewayId: !Ref InternetGateway
+     VpcId: !Ref VPC
+
+ RouteTable:
+   Type: AWS::EC2::RouteTable
+   Properties:
+     VpcId: !Ref VPC
+
+ Route:
+   Type: AWS::EC2::Route
+   Properties:
+     DestinationCidrBlock: 0.0.0.0/0
+     GatewayId: !Ref InternetGateway
+     RouteTableId: !Ref RouteTable
+
+ PublicSubnet1RouteTableAssociation:
+   Type: AWS::EC2::SubnetRouteTableAssociation
+   Properties:
+     RouteTableId: !Ref RouteTable
+     SubnetId: !Ref PublicSubnet1
+
+ PublicSubnet2RouteTableAssociation:
+   Type: AWS::EC2::SubnetRouteTableAssociation
+   Properties:
+     RouteTableId: !Ref RouteTable
+     SubnetId: !Ref PublicSubnet2
+
+ EC2Instance:
+   Type: AWS::EC2::Instance
+   Properties:
+     AvailabilityZone: us-east-1a
+     ImageId: ami-084568db4383264d4
+     InstanceType: t2.micro
+     KeyName: efs_ec2_key_apir
+     NetworkInterfaces: 
+       - AssociatePublicIpAddress: "true"
+         DeviceIndex: "0"
+         GroupSet: 
+           - Ref: "EC2SecurityGroup"
+         SubnetId: 
+           Ref: "PublicSubnet1"
+     Tags: 
+       - Key: Name
+         Value: eks-manage
+     Tenancy: default
+     UserData:
+       !Base64 |
+         #!/bin/bash
+         git clone https://github.com/ENPM818N/enpm818n-final.git
+         sudo mv enpm818n-final /home/ubuntu
+         sudo chmod 777 /home/ubuntu/enpm818n-final/ec2_userdata_helm_sudo
+         ./home/ubuntu/enpm818n-final/ec2_userdata_helm_sudo
+
+Outputs:
+ VPCId:
+   Value: !Ref VPC
+   Export:
+     Name: VPCId
+ PublicSubnet1:
+   Value: !Ref PublicSubnet1
+   Export:
+     Name: PublicSubnet1Id
+ PublicSubnet2:
+   Value: !Ref PublicSubnet2
+   Export:
+     Name: PublicSubnet2Id
+ InternetGateway:
+   Value: !Ref InternetGateway
+   Export:
+     Name: InternetGatewayId
+ RouteTable:
+   Value: !Ref RouteTable
+   Export:
+     Name: RouteTableId
+ EC2SecurityGroup:
+   Value: !Ref EC2SecurityGroup
+   Export:
+     Name: EC2SecurityGroupId
