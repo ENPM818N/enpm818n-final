@@ -1,5 +1,5 @@
 Resources:
- VPC:
+ VPC2:
    Type: AWS::EC2::VPC
    Properties:
      CidrBlock: 10.0.0.0/16
@@ -7,35 +7,35 @@ Resources:
      EnableDnsHostnames: true
      Tags:
        - Key: Name
-         Value: EKS-VPC
+         Value: EKS-VPC2
 
- PublicSubnet1:
+ PublicSubnet12:
    Type: AWS::EC2::Subnet
    Properties:
-     VpcId: !Ref VPC
+     VpcId: !Ref VPC2
      CidrBlock: 10.0.1.0/24
      AvailabilityZone: !Select [0, !GetAZs '']
      Tags:
        - Key: Name
-         Value: PublicSubnet1
+         Value: PublicSubnet12
 
- PublicSubnet2:
+ PublicSubnet22:
    Type: AWS::EC2::Subnet
    Properties:
-     VpcId: !Ref VPC
+     VpcId: !Ref VPC2
      CidrBlock: 10.0.2.0/24
      AvailabilityZone: !Select [1, !GetAZs '']
      Tags:
        - Key: Name
-         Value: PublicSubnet2
+         Value: PublicSubnet22
 
- EC2SecurityGroup:
+ EC2SecurityGroup2:
    Type: AWS::EC2::SecurityGroup
    Properties:
-     VpcId: !Ref VPC
+     VpcId: !Ref VPC2
      GroupDescription: Allow SSH access
-     GroupName: SG-EKSProject
-     SecurityGroupEgress: 
+     GroupName: SG-EKSProject2
+     SecurityGroupEgress:
        - IpProtocol: -1
          CidrIp: 0.0.0.0/0
      SecurityGroupIngress:
@@ -44,40 +44,40 @@ Resources:
          ToPort: 22
          CidrIp: 0.0.0.0/0
 
- InternetGateway:
+ InternetGateway2:
    Type: AWS::EC2::InternetGateway
 
- VPCInternetGateway:
+ VPCInternetGateway2:
    Type: AWS::EC2::VPCGatewayAttachment
    Properties:
-     InternetGatewayId: !Ref InternetGateway
-     VpcId: !Ref VPC
+     InternetGatewayId: !Ref InternetGateway2
+     VpcId: !Ref VPC2
 
- RouteTable:
+ RouteTable2:
    Type: AWS::EC2::RouteTable
    Properties:
-     VpcId: !Ref VPC
+     VpcId: !Ref VPC2
 
- Route:
+ Route2:
    Type: AWS::EC2::Route
    Properties:
      DestinationCidrBlock: 0.0.0.0/0
-     GatewayId: !Ref InternetGateway
-     RouteTableId: !Ref RouteTable
+     GatewayId: !Ref InternetGateway2
+     RouteTableId: !Ref RouteTable2
 
- PublicSubnet1RouteTableAssociation:
+ PublicSubnet1RouteTableAssociation2:
    Type: AWS::EC2::SubnetRouteTableAssociation
    Properties:
-     RouteTableId: !Ref RouteTable
-     SubnetId: !Ref PublicSubnet1
+     RouteTableId: !Ref RouteTable2
+     SubnetId: !Ref PublicSubnet12
 
- PublicSubnet2RouteTableAssociation:
+ PublicSubnet2RouteTableAssociation2:
    Type: AWS::EC2::SubnetRouteTableAssociation
    Properties:
-     RouteTableId: !Ref RouteTable
-     SubnetId: !Ref PublicSubnet2
+     RouteTableId: !Ref RouteTable2
+     SubnetId: !Ref PublicSubnet22
 
- EC2Instance:
+ EC2Instance2:
    Type: AWS::EC2::Instance
    Properties:
      AvailabilityZone: us-east-1a
@@ -88,12 +88,12 @@ Resources:
        - AssociatePublicIpAddress: "true"
          DeviceIndex: "0"
          GroupSet: 
-           - Ref: "EC2SecurityGroup"
-         SubnetId: 
-           Ref: "PublicSubnet1"
-     Tags: 
+           - Ref: "EC2SecurityGroup2"
+         SubnetId:
+           Ref: "PublicSubnet12"
+     Tags:
        - Key: Name
-         Value: eks-manage
+         Value: eks-test
      Tenancy: default
      UserData:
        !Base64 |
@@ -105,26 +105,26 @@ Resources:
 
 Outputs:
  VPCId:
-   Value: !Ref VPC
+   Value: !Ref VPC2
    Export:
-     Name: VPCId
+     Name: VPC2Id
  PublicSubnet1:
-   Value: !Ref PublicSubnet1
+   Value: !Ref PublicSubnet12
    Export:
-     Name: PublicSubnet1Id
+     Name: PublicSubnet12Id
  PublicSubnet2:
-   Value: !Ref PublicSubnet2
+   Value: !Ref PublicSubnet22
    Export:
-     Name: PublicSubnet2Id
+     Name: PublicSubnet22Id
  InternetGateway:
-   Value: !Ref InternetGateway
+   Value: !Ref InternetGateway2
    Export:
-     Name: InternetGatewayId
+     Name: InternetGateway2Id
  RouteTable:
-   Value: !Ref RouteTable
+   Value: !Ref RouteTable2
    Export:
-     Name: RouteTableId
+     Name: RouteTable2Id
  EC2SecurityGroup:
-   Value: !Ref EC2SecurityGroup
+   Value: !Ref EC2SecurityGroup2
    Export:
-     Name: EC2SecurityGroupId
+     Name: EC2SecurityGroup2Id
