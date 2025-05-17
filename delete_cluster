@@ -1,0 +1,1 @@
+eksctl delete cluster -f enpm818n-final/cluster.yaml
