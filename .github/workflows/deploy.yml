@@ -1,7 +1,7 @@
 name: Deploy OpenTelemetry Demo to EKS (Rollback Demo)
 
 on:
-  workflow_dispatch:      # Manual trigger only
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -29,19 +29,28 @@ jobs:
       - name: Update kubeconfig using eksctl
         run: eksctl utils write-kubeconfig --cluster=${{ secrets.EKS_CLUSTER_NAME }} --region=${{ secrets.AWS_REGION }}
 
-      - name: Deploy OpenTelemetry Demo using Helm (force rollback demo)
+      - name: Install Good Version (Preparation)
         run: |
           helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
           helm repo update
-          # Try to do a bad upgrade to simulate failure and trigger rollback
-          if ! helm upgrade --install otel-demo open-telemetry/opentelemetry-demo \
+          helm upgrade --install otel-demo open-telemetry/opentelemetry-demo \
             --namespace otel-demo \
-            --set bogusParam=badValue \
-            --create-namespace; then
-            echo "Helm upgrade failed. Rolling back to previous release..."
-            helm rollback otel-demo
-            exit 1
-          fi
+            --version 0.37.1 \
+            --create-namespace
+
+      - name: Attempt Bad Upgrade (simulate failure with invalid value)
+        id: badupgrade
+        continue-on-error: true
+        run: |
+          helm upgrade otel-demo open-telemetry/opentelemetry-demo \
+            --namespace otel-demo \
+            --set "image.repository=DOES_NOT_EXIST"
+
+      - name: Rollback to previous revision if bad upgrade failed
+        if: steps.badupgrade.outcome == 'failure'
+        run: |
+          echo "Upgrade failed. Rolling back to previous release..."
+          helm rollback otel-demo 1 --namespace otel-demo
 
       - name: Show Helm History and Pod Status (after rollback)
         run: |
