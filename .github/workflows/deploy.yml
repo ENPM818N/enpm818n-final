@@ -1,45 +1,49 @@
-name: CI/CD for OpenTelemetry App (EKS)
+name: Deploy OpenTelemetry Demo to EKS
 
 on:
-    workflow_dispatch:
-      
+  workflow_dispatch:      # <-- enables manual run via GitHub Actions UI
+  push:
+    branches: [main]      # <-- also runs automatically on main branch push
+
 jobs:
   deploy:
-    name: Deploy OpenTelemetry to EKS
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+      - name: Install eksctl
+        run: |
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
 
-    - name: Install eksctl
-      uses: jaxxstorm/action-install-eksctl@v1
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.28.0'
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Update kubeconfig
-      run: eksctl utils write-kubeconfig --cluster eks-cluster --region us-east-1
+      - name: Update kubeconfig using eksctl
+        run: eksctl utils write-kubeconfig --cluster=${{ secrets.EKS_CLUSTER_NAME }} --region=${{ secrets.AWS_REGION }}
 
-    - name: Deploy OpenTelemetry YAML
-      run: |
-        kubectl apply -f opentelemetry-demo.yaml
+      - name: Deploy OpenTelemetry Demo using Helm
+        run: |
+          helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo update
+          helm upgrade --install otel-demo open-telemetry/opentelemetry-demo \
+            --namespace otel-demo \
+            --create-namespace || {
+              echo "Helm upgrade failed. Rolling back..."
+              helm rollback otel-demo
+              exit 1
+            }
 
-    - name: Verify Deployment Success
-      run: |
-        kubectl rollout status deployment frontend -n otel-demo || exit 1
-
-    - name: Rollback on Failure
-      if: failure()
-      run: |
-        echo "Deployment failed, rolling back..."
-        kubectl rollout undo deployment frontend -n otel-demo
+      - name: Verify deployment
+        run: |
+          kubectl get all -n otel-demo
+          helm history otel-demo -n otel-demo
