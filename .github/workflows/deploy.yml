@@ -1,9 +1,7 @@
 name: Deploy OpenTelemetry Demo to EKS
 
 on:
-  workflow_dispatch:      # <-- enables manual run via GitHub Actions UI
-  push:
-    branches: [main]      # <-- also runs automatically on main branch push
+  workflow_dispatch:      # <-- Only manual runs enabled
 
 jobs:
   deploy:
