@@ -1,7 +1,7 @@
-name: Deploy OpenTelemetry Demo to EKS
+name: Deploy OpenTelemetry Demo to EKS (Rollback Demo)
 
 on:
-  workflow_dispatch:      # <-- Only manual runs enabled
+  workflow_dispatch:      # Manual trigger only
 
 jobs:
   deploy:
@@ -29,19 +29,23 @@ jobs:
       - name: Update kubeconfig using eksctl
         run: eksctl utils write-kubeconfig --cluster=${{ secrets.EKS_CLUSTER_NAME }} --region=${{ secrets.AWS_REGION }}
 
-      - name: Deploy OpenTelemetry Demo using Helm
+      - name: Deploy OpenTelemetry Demo using Helm (force rollback demo)
         run: |
           helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
           helm repo update
-          helm upgrade --install otel-demo open-telemetry/opentelemetry-demo \
+          # Try to do a bad upgrade to simulate failure and trigger rollback
+          if ! helm upgrade --install otel-demo open-telemetry/opentelemetry-demo \
             --namespace otel-demo \
-            --create-namespace || {
-              echo "Helm upgrade failed. Rolling back..."
-              helm rollback otel-demo
-              exit 1
-            }
+            --set bogusParam=badValue \
+            --create-namespace; then
+            echo "Helm upgrade failed. Rolling back to previous release..."
+            helm rollback otel-demo
+            exit 1
+          fi
 
-      - name: Verify deployment
+      - name: Show Helm History and Pod Status (after rollback)
         run: |
-          kubectl get all -n otel-demo
+          echo "===== HELM HISTORY ====="
           helm history otel-demo -n otel-demo
+          echo "===== POD STATUS ====="
+          kubectl get pods -n otel-demo
